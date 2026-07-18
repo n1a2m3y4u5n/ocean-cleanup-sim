@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>해양 쓰레기 수거 무인 선박 시뮬레이터</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#020c1b;color:#cdd6f4;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;
+  padding:10px 14px;gap:10px;user-select:none;
+}
+header{
+  text-align:center;font-size:.95rem;font-weight:700;
+  color:#7aa2f7;letter-spacing:.03em;flex-shrink:0;
+  text-shadow:0 0 20px rgba(122,162,247,.4);
+}
+#layout{display:flex;gap:12px;flex:1;min-height:0}
+#canvas-wrap{flex-shrink:0;position:relative}
+canvas{display:block;border-radius:6px;border:1px solid #1a3050}
+#sidebar{
+  width:292px;min-width:270px;display:flex;
+  flex-direction:column;gap:8px;overflow-y:auto;
+}
+#sidebar::-webkit-scrollbar{width:4px}
+#sidebar::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:2px}
+.card{
+  background:#0b1929;border:1px solid #1a3050;
+  border-radius:8px;padding:10px 12px;
+}
+.card-title{
+  font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;
+  color:#475569;margin-bottom:10px;padding-bottom:5px;
+  border-bottom:1px solid #1a3050;
+}
+.slider-row{margin-bottom:9px}
+.slider-lbl{
+  display:flex;justify-content:space-between;
+  font-size:.72rem;color:#94a3b8;margin-bottom:3px;
+}
+.slider-lbl .sv{color:#c0caf5;font-weight:700;font-variant-numeric:tabular-nums}
+input[type=range]{
+  width:100%;height:4px;-webkit-appearance:none;
+  background:#1e3a5f;border-radius:2px;cursor:pointer;outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;
+  border-radius:50%;background:#7aa2f7;border:2px solid #0b1929;
+}
+.algo-hint{font-size:.66rem;color:#475569;font-style:italic;margin-top:4px}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+button{
+  background:#0f2035;border:1px solid #1e3a5f;color:#94a3b8;
+  border-radius:5px;padding:7px 8px;font-size:.7rem;
+  cursor:pointer;text-align:center;line-height:1.35;
+  transition:background .12s,color .12s,border-color .12s;
+}
+button:hover{background:#1e3a5f;color:#e2e8f0}
+button:active{transform:scale(.97)}
+.btn-warn{border-color:#fb923c!important;color:#fb923c!important}
+.btn-warn:hover{background:#fb923c!important;color:#020c1b!important}
+.btn-danger{border-color:#f87171!important;color:#f87171!important}
+.btn-danger:hover{background:#f87171!important;color:#020c1b!important}
+.btn-good{border-color:#4ade80!important;color:#4ade80!important}
+.btn-good:hover{background:#4ade80!important;color:#020c1b!important}
+.btn-net-on{border-color:#4ade80!important;color:#4ade80!important;background:#0d2e1a!important}
+.ctrl-row{display:flex;gap:5px;margin-top:5px}
+.ctrl-row button{flex:1}
+.speed-row{
+  display:flex;align-items:center;gap:8px;margin-top:7px;
+}
+.speed-row label{font-size:.7rem;color:#64748b;white-space:nowrap}
+.speed-row input{flex:1}
+.speed-row .sv{font-size:.7rem;color:#c0caf5;width:28px;text-align:right}
+/* Dashboard */
+.dash-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.status-badge{
+  font-size:.63rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.08em;padding:3px 9px;border-radius:20px;
+  border:1px solid currentColor;
+}
+.s-surf{color:#38bdf8}.s-dive{color:#a78bfa}
+.s-tran{color:#fbbf24}.s-wait{color:#4ade80}.s-emrg{color:#f87171}
+.target-txt{
+  font-size:.64rem;color:#475569;max-width:145px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;
+}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.metric{
+  background:#060f1c;border:1px solid #1a3050;
+  border-radius:5px;padding:6px 8px;text-align:center;
+}
+.metric-nm{
+  font-size:.59rem;color:#475569;text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:3px;
+}
+.metric-v{
+  font-size:1.15rem;font-weight:700;
+  font-variant-numeric:tabular-nums;line-height:1;
+}
+.c-grn{color:#4ade80}.c-blu{color:#7aa2f7}
+.c-red{color:#f87171}.c-wht{color:#cdd6f4}
+.e-track{
+  background:#060f1c;border:1px solid #1a3050;
+  border-radius:3px;height:8px;overflow:hidden;margin-bottom:7px;
+}
+.e-fill{height:100%;border-radius:3px;transition:width .3s,background .3s}
+.sub-m{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+/* Log */
+#log-area{
+  font-size:.63rem;line-height:1.7;max-height:110px;
+  overflow-y:auto;color:#64748b;
+}
+#log-area::-webkit-scrollbar{width:4px}
+#log-area::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:2px}
+.lg{color:#64748b}.lg-g{color:#4ade80}.lg-w{color:#fbbf24}.lg-a{color:#f87171}
+.lt{color:#38bdf8;margin-right:4px}
+/* Legend */
+#legend{
+  display:flex;flex-wrap:wrap;gap:8px 14px;
+  font-size:.66rem;color:#94a3b8;flex-shrink:0;
+  padding:7px 12px;background:#0b1929;
+  border:1px solid #1a3050;border-radius:6px;
+}
+.li{display:flex;align-items:center;gap:5px}
+.ld{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.ls{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<header>🌊 에너지 자립형 해양 쓰레기 수거 무인 선박 — 동적 경로 탐색 시뮬레이터</header>
+
+<div id="layout">
+  <div id="canvas-wrap"><canvas id="sim"></canvas></div>
+
+  <div id="sidebar">
+
+    <div class="card">
+      <div class="card-title">알고리즘 가중치 (실시간 정규화)</div>
+      <div class="slider-row">
+        <div class="slider-lbl">
+          <span>⏱ 시간 효율 (최단 경로)</span>
+          <span class="sv" id="vt">0.40</span>
+        </div>
+        <input type="range" id="sw-t" min="0" max="100" value="40">
+      </div>
+      <div class="slider-row">
+        <div class="slider-lbl">
+          <span>🌿 생태계 보호 (우회 경로)</span>
+          <span class="sv" id="ve">0.30</span>
+        </div>
+        <input type="range" id="sw-e" min="0" max="100" value="30">
+      </div>
+      <div class="slider-row">
+        <div class="slider-lbl">
+          <span>⚡ 에너지 절약 (저비용 경로)</span>
+          <span class="sv" id="ven">0.30</span>
+        </div>
+        <input type="range" id="sw-n" min="0" max="100" value="30">
+      </div>
+      <div class="algo-hint" id="algo-hint">현재 전략: 균형형 다목적 최적화</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">시스템 제어</div>
+      <div class="btn-grid">
+        <button id="btn-drone" class="btn-warn">📡 드론 출격</button>
+        <button id="btn-crowd" class="btn-good">📶 크라우드소싱</button>
+        <button id="btn-typh" class="btn-danger">🌀 태풍 생성</button>
+        <button id="btn-net">🕸 스마트 그물</button>
+      </div>
+      <div class="ctrl-row">
+        <button id="btn-pause">⏸ 일시정지</button>
+        <button id="btn-reset">🔄 초기화</button>
+      </div>
+      <div class="speed-row">
+        <label>속도</label>
+        <input type="range" id="sw-spd" min="1" max="20" value="5">
+        <span class="sv" id="v-spd">5×</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">실시간 현황</div>
+      <div class="dash-top">
+        <span class="status-badge s-surf" id="sbadge">수면 이동</span>
+        <span class="target-txt" id="tgtxt">경로 계산 중...</span>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-nm">배터리</div>
+          <div class="metric-v c-grn" id="m-bat">85%</div>
+        </div>
+        <div class="metric">
+          <div class="metric-nm">총 수거량</div>
+          <div class="metric-v c-blu" id="m-tot">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-nm">생태 피해</div>
+          <div class="metric-v c-wht" id="m-eco">0.0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-nm">경과 시간</div>
+          <div class="metric-v c-wht" id="m-time">0s</div>
+        </div>
+      </div>
+      <div class="e-track">
+        <div class="e-fill" id="e-fill" style="width:85%;background:#4ade80"></div>
+      </div>
+      <div class="sub-m">
+        <div class="metric">
+          <div class="metric-nm">수면 수거</div>
+          <div class="metric-v" id="m-surf" style="color:#fbbf24;font-size:1rem">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-nm">심해 수거</div>
+          <div class="metric-v" id="m-deep" style="color:#a78bfa;font-size:1rem">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="flex:1;min-height:80px;display:flex;flex-direction:column">
+      <div class="card-title">이벤트 로그</div>
+      <div id="log-area"></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="legend">
+  <div class="li"><div class="ld" style="background:#f59e0b"></div>수면 쓰레기</div>
+  <div class="li"><div class="ld" style="background:#8b5cf6"></div>심해 쓰레기</div>
+  <div class="li"><div class="ld" style="background:#34d399;opacity:.7"></div>해양 생물 구역</div>
+  <div class="li"><div class="ld" style="background:#ef4444"></div>태풍</div>
+  <div class="li"><div class="ls" style="background:#5c4028"></div>섬 지형</div>
+  <div class="li"><div class="ld" style="background:#38bdf8"></div>무인 선박</div>
+  <div class="li"><div class="ld" style="background:rgba(148,163,184,.6)"></div>계획 경로</div>
+  <div class="li"><div class="ld" style="background:#fbbf24;border-radius:2px"></div>드론 탐지 범위</div>
+  <div class="li"><div class="ld" style="background:rgba(0,0,0,.8);border:1px solid #334155"></div>미탐지 구역</div>
+</div>
+
+<script>
+'use strict';
+// ══════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════════════════
+const GW=55,GH=38,CS=14;
+const CW=GW*CS,CH=GH*CS;
+const CT={OCEAN:0,ISLAND:1,SURF:2,DEEP:3};
+// Energy
+const E_MOV=0.28, E_DIV_MOV=0.48, E_DIVE_IN=16, E_ASCEND=8;
+const E_DRONE=12, E_SOLAR=0.07, E_SOLAR_W=0.22;
+const PY_SURF=9, PY_DEEP=15;
+const CRIT_E=18, LOW_E=30;
+// Detection
+const DET_R=5, DRONE_R=13, DRONE_DUR=75;
+
+// ══════════════════════════════════════════════════════════════════
+// MIN-HEAP
+// ══════════════════════════════════════════════════════════════════
+class PQ{
+  constructor(){this.h=[]}
+  push(it,p){this.h.push([p,it]);this._up(this.h.length-1)}
+  pop(){
+    if(!this.h.length)return null;
+    const t=this.h[0],l=this.h.pop();
+    if(this.h.length){this.h[0]=l;this._dn(0)}
+    return t[1];
+  }
+  get size(){return this.h.length}
+  _up(i){
+    while(i>0){
+      const p=(i-1)>>1;
+      if(this.h[p][0]<=this.h[i][0])break;
+      [this.h[p],this.h[i]]=[this.h[i],this.h[p]];i=p;
+    }
+  }
+  _dn(i){
+    while(true){
+      let s=i,l=2*i+1,r=2*i+2;
+      if(l<this.h.length&&this.h[l][0]<this.h[s][0])s=l;
+      if(r<this.h.length&&this.h[r][0]<this.h[s][0])s=r;
+      if(s===i)break;
+      [this.h[s],this.h[i]]=[this.h[i],this.h[s]];i=s;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// GRID
+// ══════════════════════════════════════════════════════════════════
+class Grid{
+  constructor(){
+    this.cells=Array.from({length:GH},()=>
+      Array.from({length:GW},()=>({
+        type:CT.OCEAN,trash:0,marine:0,
+        revealed:false,typhoon:0,
+      }))
+    );
+    this.typhoons=[];
+    this._gen();
+  }
+
+  _gen(){
+    const circ=(cx,cy,r,fn)=>{
+      for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+        if(dx*dx+dy*dy<=r*r){
+          const x=cx+dx,y=cy+dy;
+          if(this.ok(x,y))fn(this.cells[y][x],dx,dy,Math.hypot(dx,dy));
+        }
+      }
+    };
+    // Islands
+    for(const[x,y,r]of[[8,5,3],[46,7,2],[20,28,3],[39,24,2],[13,17,2],[50,31,2],[31,11,2],[4,33,2],[54,18,2]])
+      circ(x,y,r,c=>{c.type=CT.ISLAND});
+
+    // Marine life zones
+    for(const[x,y,r]of[[15,9,5],[36,21,5],[24,32,4],[49,13,3],[7,20,4]])
+      circ(x,y,r,(c,_dx,_dy,d)=>{
+        if(c.type!==CT.ISLAND)c.marine=Math.max(c.marine,1-d/r);
+      });
+
+    // Surface trash clusters
+    for(const[x,y,r,a]of[
+      [5,4,3,4],[26,6,2,3],[41,4,3,5],[2,24,2,3],[49,21,2,4],
+      [30,34,3,5],[17,34,2,3],[52,34,2,3],[43,15,2,4]
+    ])circ(x,y,r,c=>{if(c.type===CT.OCEAN){c.type=CT.SURF;c.trash=a}});
+
+    // Deep trash clusters
+    for(const[x,y,r,a]of[
+      [10,14,3,5],[43,11,2,4],[22,21,3,5],[46,31,2,4],
+      [7,32,2,3],[27,18,2,4],[18,8,2,3]
+    ])circ(x,y,r,c=>{if(c.type===CT.OCEAN){c.type=CT.DEEP;c.trash=a}});
+  }
+
+  ok(x,y){return x>=0&&x<GW&&y>=0&&y<GH}
+  get(x,y){return this.ok(x,y)?this.cells[y][x]:null}
+
+  nbrs(x,y){
+    const r=[];
+    for(const[dx,dy]of[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]]){
+      const nx=x+dx,ny=y+dy;
+      if(!this.ok(nx,ny))continue;
+      if(this.cells[ny][nx].type===CT.ISLAND)continue;
+      if(dx!==0&&dy!==0){
+        if(this.cells[y]?.[x+dx]?.type===CT.ISLAND)continue;
+        if(this.cells[y+dy]?.[x]?.type===CT.ISLAND)continue;
+      }
+      r.push({x:nx,y:ny,diag:dx!==0&&dy!==0});
+    }
+    return r;
+  }
+
+  reveal(cx,cy,r){
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+      if(dx*dx+dy*dy<=r*r){
+        const x=cx+dx,y=cy+dy;
+        if(this.ok(x,y))this.cells[y][x].revealed=true;
+      }
+    }
+  }
+
+  collect(x,y){
+    const c=this.get(x,y);
+    if(!c||c.trash<=0)return 0;
+    const a=c.trash;c.trash=0;c.type=CT.OCEAN;return a;
+  }
+
+  revealedTrash(){
+    const r=[];
+    for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+      const c=this.cells[y][x];
+      if(c.revealed&&c.trash>0&&(c.type===CT.SURF||c.type===CT.DEEP))
+        r.push({x,y,surf:c.type===CT.SURF,amt:c.trash});
+    }
+    return r;
+  }
+
+  spawnTyphoon(){
+    const e=Math.floor(Math.random()*4);
+    let x,y,vx,vy;
+    const sp=.22+Math.random()*.12,jt=(Math.random()-.5)*.18;
+    if(e===0){x=Math.random()*GW|0;y=0;vx=jt;vy=sp}
+    else if(e===1){x=Math.random()*GW|0;y=GH-1;vx=jt;vy=-sp}
+    else if(e===2){x=0;y=Math.random()*GH|0;vx=sp;vy=jt}
+    else{x=GW-1;y=Math.random()*GH|0;vx=-sp;vy=jt}
+    this.typhoons.push({x,y,vx,vy,r:4+Math.random()*3,life:500,ang:0});
+    return{x:Math.round(x),y:Math.round(y)};
+  }
+
+  tickTyphoons(){
+    for(let y=0;y<GH;y++)for(let x=0;x<GW;x++)this.cells[y][x].typhoon=0;
+    for(const t of this.typhoons){
+      t.x+=t.vx;t.y+=t.vy;t.ang+=0.06;t.life--;
+      if(t.x<1||t.x>GW-2)t.vx*=-1;
+      if(t.y<1||t.y>GH-2)t.vy*=-1;
+      const r=Math.ceil(t.r);
+      for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+        const d=Math.hypot(dx,dy);
+        if(d<=t.r){
+          const cx=Math.round(t.x)+dx,cy=Math.round(t.y)+dy;
+          if(this.ok(cx,cy))
+            this.cells[cy][cx].typhoon=Math.max(
+              this.cells[cy][cx].typhoon,
+              (1-d/t.r)*Math.min(1,t.life/200)
+            );
+        }
+      }
+    }
+    this.typhoons=this.typhoons.filter(t=>t.life>0);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MULTI-OBJECTIVE A*  (time · eco · energy)
+// ══════════════════════════════════════════════════════════════════
+const PF={
+  key(x,y){return(y<<8)|x},
+  h(x1,y1,x2,y2){return Math.hypot(x2-x1,y2-y1)},
+
+  edge(grid,fx,fy,tx,ty,diag,W,diving,net){
+    const c=grid.get(tx,ty);if(!c)return Infinity;
+    let tc=diag?1.414:1, ec=0, nc=diving?E_DIV_MOV:E_MOV;
+    if(c.typhoon>0){tc*=(1+c.typhoon*2.2);nc*=(1+c.typhoon*1.3)}
+    if(c.marine>0){
+      if(net){tc*=1.45;nc*=1.35;ec=c.marine*.04}
+      else   {ec=c.marine*2.4}
+    }
+    return W.t*tc+W.e*ec+W.n*nc;
+  },
+
+  find(grid,sx,sy,gx,gy,W,diving,net){
+    if(sx===gx&&sy===gy)return[];
+    const open=new PQ(),from=new Map(),gS=new Map();
+    gS.set(this.key(sx,sy),0);
+    open.push({x:sx,y:sy},this.h(sx,sy,gx,gy)*W.t);
+    let itr=0;
+    while(open.size>0&&itr++<GW*GH*3){
+      const cur=open.pop();if(!cur)break;
+      if(cur.x===gx&&cur.y===gy){
+        const path=[];let cx=gx,cy=gy;
+        for(let g=0;g<GW*GH;g++){
+          path.unshift({x:cx,y:cy});
+          const pv=from.get(this.key(cx,cy));
+          if(!pv||(pv.x===sx&&pv.y===sy))break;
+          cx=pv.x;cy=pv.y;
+        }
+        return path;
+      }
+      const ck=this.key(cur.x,cur.y),cg=gS.get(ck)??Infinity;
+      for(const nb of grid.nbrs(cur.x,cur.y)){
+        const cost=this.edge(grid,cur.x,cur.y,nb.x,nb.y,nb.diag,W,diving,net);
+        const ng=cg+cost,nk=this.key(nb.x,nb.y);
+        if(ng<(gS.get(nk)??Infinity)){
+          from.set(nk,{x:cur.x,y:cur.y});
+          gS.set(nk,ng);
+          open.push(nb,ng+this.h(nb.x,nb.y,gx,gy)*W.t);
+        }
+      }
+    }
+    return[];
+  },
+
+  score(sx,sy,energy,t,grid,W){
+    const dist=Math.hypot(t.x-sx,t.y-sy);
+    const marine=grid.get(t.x,t.y)?.marine??0;
+    const diveExtra=t.surf?0:E_DIVE_IN+E_ASCEND;
+    if(!t.surf&&energy<diveExtra+15)return Infinity;
+    const reward=t.amt*(t.surf?PY_SURF:PY_DEEP);
+    let emerg=0;
+    if(energy<CRIT_E&&t.surf)emerg=300/(dist+1)*t.amt;
+    return(W.t*dist*1.6+W.e*marine*13+W.n*(dist*E_MOV+diveExtra))-reward*7-emerg;
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// SHIP STATE MACHINE
+// ══════════════════════════════════════════════════════════════════
+class Ship{
+  constructor(){this.reset()}
+
+  reset(){
+    this.x=GW>>1;this.y=GH>>1;
+    this.energy=85;
+    this.mode='surface'; // surface|diving|dive|ascending|waiting
+    this.transT=0;this.waitT=0;
+    this.path=[];this.target=null;
+    this.cSurf=0;this.cDeep=0;this.ecoDmg=0;this.ttime=0;
+    this.facing=0;this.reT=0;this.fRep=false;
+    this.droneOn=false;this.droneT=0;this.droneX=0;this.droneY=0;
+    this.net=false;this.pyF=0;this.events=[];
+    this.pathMode='balanced'; // time|eco|energy|balanced
+  }
+
+  get collected(){return this.cSurf+this.cDeep}
+
+  si(){
+    if(this.mode==='waiting')  return{lb:'충전 대기',   cl:'s-wait'};
+    if(this.mode==='diving')   return{lb:'잠수 중',     cl:'s-tran'};
+    if(this.mode==='ascending')return{lb:'부상 중',     cl:'s-tran'};
+    if(this.mode==='dive')     return{lb:'수중 수거',   cl:'s-dive'};
+    if(this.energy<CRIT_E)     return{lb:'비상 모드',   cl:'s-emrg'};
+    return{lb:'수면 이동',cl:'s-surf'};
+  }
+
+  step(grid,W){
+    this.ttime++;
+    if(this.pyF>0)this.pyF--;
+    this.energy=Math.min(100,this.energy+(this.mode==='waiting'?E_SOLAR_W:E_SOLAR));
+    if(this.droneOn){
+      this.droneT--;
+      if(this.droneT<=0)this.droneOn=false;
+      else grid.reveal(this.droneX,this.droneY,DRONE_R);
+    }
+    grid.reveal(this.x,this.y,DET_R);
+    switch(this.mode){
+      case'surface':  this._surf(grid,W);break;
+      case'diving':   this._diving();break;
+      case'dive':     this._dive(grid,W);break;
+      case'ascending':this._ascend();break;
+      case'waiting':  this._wait(grid,W);break;
+    }
+  }
+
+  _surf(grid,W){
+    const c=grid.get(this.x,this.y);
+    if(c?.type===CT.SURF&&c.trash>0){
+      const a=grid.collect(this.x,this.y);
+      const eg=a*PY_SURF;
+      this.cSurf+=a;this.energy=Math.min(100,this.energy+eg);
+      this.pyF=28;this.fRep=true;
+      this.events.push({t:'surf',a,eg});return;
+    }
+    if(this.energy<CRIT_E)this._planEmerg(grid,W);
+    if(this.fRep||this.path.length===0||this.reT>60)this._plan(grid,W);
+    // Reach deep target → dive
+    if(this.target&&!this.target.surf&&this.path.length===0){
+      if(Math.hypot(this.target.x-this.x,this.target.y-this.y)<=1.5){
+        if(this.energy>=E_DIVE_IN+E_ASCEND+10){
+          this.mode='diving';this.transT=18;
+          this.energy-=E_DIVE_IN*.5;
+          this.events.push({t:'dive_start'});return;
+        }else{this.target=null;this.fRep=true}
+      }
+    }
+    this._mv(grid);
+  }
+
+  _diving(){
+    this.transT--;this.energy-=E_DIVE_IN/18*.5;
+    if(this.transT<=0){this.mode='dive';this.events.push({t:'dived'})}
+  }
+
+  _dive(grid,W){
+    const c=grid.get(this.x,this.y);
+    if(c?.type===CT.DEEP&&c.trash>0){
+      const a=grid.collect(this.x,this.y);
+      const eg=a*PY_DEEP;
+      this.cDeep+=a;this.energy=Math.min(100,this.energy+eg);
+      this.pyF=35;this.fRep=true;
+      this.events.push({t:'deep',a,eg});return;
+    }
+    if(this._nearDeep(grid,5)===0||this.energy<E_ASCEND+12){
+      this.mode='ascending';this.transT=14;
+      this.events.push({t:'asc_start'});return;
+    }
+    if(this.fRep||this.path.length===0)this._planDeep(grid,W);
+    this._mv(grid);
+  }
+
+  _ascend(){
+    this.transT--;this.energy-=E_ASCEND/14;
+    if(this.transT<=0){
+      this.mode='surface';this.target=null;this.fRep=true;
+      this.events.push({t:'surfaced'});
+    }
+  }
+
+  _wait(grid,W){
+    this.waitT--;
+    if(this.energy>40||this.waitT<=0){this.mode='surface';this.fRep=true}
+  }
+
+  _mv(grid){
+    this.reT++;
+    if(this.path.length===0){
+      if(this.energy<LOW_E&&this.mode==='surface'){this.mode='waiting';this.waitT=65}
+      return;
+    }
+    const nx=this.path[0];
+    const nc=grid.get(nx.x,nx.y);
+    if(!nc||nc.type===CT.ISLAND){this.fRep=true;this.path=[];return}
+    // Eco damage
+    if(nc.marine>0&&!this.net)this.ecoDmg+=nc.marine*.26;
+    // Energy cost
+    const diag=(nx.x!==this.x&&nx.y!==this.y);
+    let ec=(this.mode==='dive'?E_DIV_MOV:E_MOV)*(diag?1.414:1);
+    ec*=(1+nc.typhoon*1.3);
+    if(this.net&&nc.marine>0)ec*=1.35;
+    this.energy=Math.max(0,this.energy-ec);
+    this.facing=Math.atan2(nx.y-this.y,nx.x-this.x);
+    this.x=nx.x;this.y=nx.y;this.path.shift();
+    if(this.energy<=0){this.mode='waiting';this.waitT=80;this.events.push({t:'depleted'})}
+  }
+
+  _plan(grid,W){
+    this.reT=0;this.fRep=false;
+    const tr=grid.revealedTrash();
+    if(!tr.length){this._explore(grid);return}
+    let best=null,bs=Infinity;
+    for(const t of tr){
+      const s=PF.score(this.x,this.y,this.energy,t,grid,W);
+      if(s<bs){bs=s;best=t}
+    }
+    if(!best){this._explore(grid);return}
+    this.target=best;
+    this.path=PF.find(grid,this.x,this.y,best.x,best.y,W,false,this.net);
+  }
+
+  _planEmerg(grid,W){
+    this.reT=0;this.fRep=false;
+    const sf=grid.revealedTrash().filter(t=>t.surf&&t.amt>=3);
+    if(!sf.length){this.mode='waiting';this.waitT=70;return}
+    sf.sort((a,b)=>
+      Math.hypot(a.x-this.x,a.y-this.y)*(6-a.amt)-
+      Math.hypot(b.x-this.x,b.y-this.y)*(6-b.amt)
+    );
+    this.target=sf[0];
+    this.path=PF.find(grid,this.x,this.y,sf[0].x,sf[0].y,{t:.75,e:.1,n:.15},false,false);
+  }
+
+  _planDeep(grid,W){
+    this.reT=0;this.fRep=false;
+    const dp=grid.revealedTrash().filter(t=>!t.surf);
+    if(!dp.length){this.mode='ascending';this.transT=14;return}
+    dp.sort((a,b)=>Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y));
+    this.target=dp[0];
+    this.path=PF.find(grid,this.x,this.y,dp[0].x,dp[0].y,W,true,false);
+  }
+
+  _explore(grid){
+    let bx=this.x,by=this.y,bs=-1;
+    for(let i=0;i<30;i++){
+      const tx=Math.floor(Math.random()*GW),ty=Math.floor(Math.random()*GH);
+      if(grid.get(tx,ty)?.type===CT.ISLAND)continue;
+      let u=0;
+      for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){
+        if(!grid.get(tx+dx,ty+dy)?.revealed)u++;
+      }
+      if(u>bs){bs=u;bx=tx;by=ty}
+    }
+    if(bx!==this.x||by!==this.y)
+      this.path=PF.find(grid,this.x,this.y,bx,by,{t:.6,e:.2,n:.2},false,false);
+  }
+
+  _nearDeep(grid,r){
+    let n=0;
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+      const c=grid.get(this.x+dx,this.y+dy);
+      if(c?.type===CT.DEEP&&c.trash>0)n++;
+    }
+    return n;
+  }
+
+  launchDrone(grid){
+    if(this.droneOn||this.energy<E_DRONE)return false;
+    this.energy-=E_DRONE;this.droneOn=true;this.droneT=DRONE_DUR;
+    let bx=this.x,by=this.y,bs=0;
+    for(let i=0;i<45;i++){
+      const tx=Math.floor(Math.random()*GW),ty=Math.floor(Math.random()*GH);
+      if(grid.get(tx,ty)?.type===CT.ISLAND)continue;
+      let u=0;
+      for(let dy=-DRONE_R;dy<=DRONE_R;dy++)for(let dx=-DRONE_R;dx<=DRONE_R;dx++)
+        if(dx*dx+dy*dy<=DRONE_R*DRONE_R&&!grid.get(tx+dx,ty+dy)?.revealed)u++;
+      if(u>bs){bs=u;bx=tx;by=ty}
+    }
+    this.droneX=bx;this.droneY=by;
+    grid.reveal(bx,by,DRONE_R);this.fRep=true;
+    return true;
+  }
+
+  crowdData(grid){
+    let found=0;
+    for(let i=0;i<6+Math.floor(Math.random()*7);i++){
+      const x=Math.floor(Math.random()*GW),y=Math.floor(Math.random()*GH);
+      grid.reveal(x,y,2+Math.floor(Math.random()*3));
+      const c=grid.get(x,y);
+      if(c&&c.trash>0)found++;
+    }
+    this.fRep=true;return found;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDERER
+// ══════════════════════════════════════════════════════════════════
+class Renderer{
+  constructor(cv){this.cv=cv;this.ctx=cv.getContext('2d');this.f=0}
+
+  draw(grid,ship,W){
+    const ctx=this.ctx;
+    this.f++;const f=this.f;
+    ctx.fillStyle='#030a14';ctx.fillRect(0,0,CW,CH);
+
+    // Cells (revealed only, fog pass later)
+    for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+      const c=grid.cells[y][x];if(!c.revealed)continue;
+      const px=x*CS,py=y*CS;
+      switch(c.type){
+        case CT.OCEAN:
+          ctx.fillStyle='#050d1b';ctx.fillRect(px,py,CS,CS);break;
+        case CT.ISLAND:
+          ctx.fillStyle='#2e1e0e';ctx.fillRect(px,py,CS,CS);
+          ctx.fillStyle='#4a3018';ctx.fillRect(px+1,py+1,CS-2,CS-2);
+          ctx.fillStyle='#5e4020';ctx.fillRect(px+2,py+2,CS-4,CS-4);
+          break;
+        case CT.SURF:
+          ctx.fillStyle='#050d1b';ctx.fillRect(px,py,CS,CS);
+          this._trash(ctx,px,py,c.trash,false,f);break;
+        case CT.DEEP:
+          ctx.fillStyle='#030710';ctx.fillRect(px,py,CS,CS);
+          this._trash(ctx,px,py,c.trash,true,f);break;
+      }
+      // Marine life overlay
+      if(c.marine>0&&c.type!==CT.ISLAND){
+        ctx.fillStyle=`rgba(52,211,153,${c.marine*.17})`;
+        ctx.fillRect(px,py,CS,CS);
+      }
+      // Typhoon overlay
+      if(c.typhoon>0){
+        ctx.fillStyle=`rgba(239,68,68,${c.typhoon*.2})`;
+        ctx.fillRect(px,py,CS,CS);
+      }
+      // Subtle grid
+      ctx.strokeStyle='rgba(255,255,255,.02)';ctx.lineWidth=.5;
+      ctx.strokeRect(px,py,CS,CS);
+    }
+
+    // Typhoon spinners
+    this._typhoons(ctx,grid,f);
+    // Detection ring
+    this._detect(ctx,ship,f);
+    // Drone ring
+    if(ship.droneOn)this._drone(ctx,ship);
+    // Planned path
+    this._path(ctx,ship,f,W);
+    // Ship
+    this._ship(ctx,ship,f);
+    // Pyrolysis flash
+    if(ship.pyF>0)this._pyro(ctx,ship);
+
+    // Fog of war
+    for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+      if(!grid.cells[y][x].revealed){
+        ctx.fillStyle='rgba(2,7,17,.88)';
+        ctx.fillRect(x*CS,y*CS,CS,CS);
+      }
+    }
+
+    // Canvas HUD
+    this._hud(ctx,ship);
+  }
+
+  _trash(ctx,px,py,amt,deep,f){
+    if(!amt)return;
+    const cx=px+CS/2,cy=py+CS/2;
+    const pulse=.62+Math.sin(f*.09)*.38;
+    ctx.save();ctx.globalAlpha=pulse;
+    if(deep){
+      ctx.shadowColor='#8b5cf6';ctx.shadowBlur=10;
+      ctx.fillStyle='#7c3aed';
+      ctx.beginPath();ctx.arc(cx,cy,1.7+amt*.78,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#a78bfa';
+      for(let i=0;i<Math.min(amt,4);i++){
+        const a=(i/4)*Math.PI*2+f*.025;
+        ctx.beginPath();
+        ctx.arc(cx+Math.cos(a)*(2.8+amt*.42),cy+Math.sin(a)*(2.8+amt*.42),1.1,0,Math.PI*2);
+        ctx.fill();
+      }
+    }else{
+      ctx.shadowColor='#f59e0b';ctx.shadowBlur=8;
+      ctx.fillStyle='#d97706';
+      ctx.beginPath();ctx.arc(cx,cy,1.7+amt*.72,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fcd34d';
+      ctx.beginPath();ctx.arc(cx-1,cy-1,(1.7+amt*.72)*.44,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  _typhoons(ctx,grid,f){
+    for(const t of grid.typhoons){
+      const px=t.x*CS,py=t.y*CS,R=t.r*CS,alpha=Math.min(.8,t.life/200);
+      ctx.save();ctx.translate(px,py);
+      const g=ctx.createRadialGradient(0,0,0,0,0,R);
+      g.addColorStop(0,`rgba(239,68,68,${alpha*.65})`);
+      g.addColorStop(.55,`rgba(220,38,38,${alpha*.3})`);
+      g.addColorStop(1,'rgba(239,68,68,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);ctx.fill();
+      ctx.lineWidth=1.6;
+      for(let arm=0;arm<3;arm++){
+        ctx.strokeStyle=`rgba(251,191,36,${alpha*.75})`;
+        ctx.beginPath();
+        for(let i=0;i<28;i++){
+          const a=t.ang+arm*Math.PI*2/3+i*.24,r2=(i/28)*R;
+          i===0?ctx.moveTo(Math.cos(a)*r2,Math.sin(a)*r2)
+               :ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  _detect(ctx,ship,f){
+    const cx=(ship.x+.5)*CS,cy=(ship.y+.5)*CS,R=DET_R*CS;
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    g.addColorStop(0,'rgba(56,189,248,.04)');
+    g.addColorStop(.7,'rgba(56,189,248,.07)');
+    g.addColorStop(1,'rgba(56,189,248,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+    for(let ring=1;ring<=2;ring++){
+      const ph=(f+ring*15)%30/30;
+      const al=Math.max(0,Math.sin(ph*Math.PI)*.18);
+      ctx.beginPath();ctx.arc(cx,cy,R*ph,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(56,189,248,${al})`;ctx.lineWidth=1;ctx.stroke();
+    }
+  }
+
+  _drone(ctx,ship){
+    const cx=(ship.droneX+.5)*CS,cy=(ship.droneY+.5)*CS,R=DRONE_R*CS;
+    const al=ship.droneT/DRONE_DUR;
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    g.addColorStop(0,`rgba(251,191,36,${al*.09})`);
+    g.addColorStop(1,'rgba(251,191,36,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=`rgba(251,191,36,${al*.55})`;ctx.lineWidth=1.5;
+    ctx.setLineDash([6,5]);ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=`rgba(251,191,36,${al})`;
+    ctx.shadowColor='#fbbf24';ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(cx,cy,3.5,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+  }
+
+  _path(ctx,ship,f,W){
+    if(ship.path.length<1)return;
+    const dive=ship.mode==='dive';
+    // Path color reflects dominant weight
+    let pc;
+    if(dive) pc='rgba(167,139,250,.7)';
+    else if(ship.pathMode==='eco') pc='rgba(74,222,128,.7)';
+    else if(ship.pathMode==='energy') pc='rgba(250,204,21,.7)';
+    else pc='rgba(148,163,184,.6)';
+
+    ctx.save();
+    ctx.strokeStyle=pc;ctx.lineWidth=1.8;
+    ctx.setLineDash([4,4]);ctx.lineDashOffset=-(f*.5)%8;
+    ctx.beginPath();
+    ctx.moveTo((ship.x+.5)*CS,(ship.y+.5)*CS);
+    for(const p of ship.path)ctx.lineTo((p.x+.5)*CS,(p.y+.5)*CS);
+    ctx.stroke();ctx.setLineDash([]);
+
+    // Target marker
+    if(ship.target){
+      const tx=(ship.target.x+.5)*CS,ty=(ship.target.y+.5)*CS;
+      const r=7+Math.sin(f*.12)*2.5;
+      ctx.strokeStyle=dive?'rgba(167,139,250,.85)':'rgba(251,191,36,.85)';
+      ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(tx,ty,r,0,Math.PI*2);ctx.stroke();
+      ctx.strokeStyle=dive?'rgba(167,139,250,.3)':'rgba(251,191,36,.3)';
+      ctx.beginPath();ctx.arc(tx,ty,r+5,0,Math.PI*2);ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  _ship(ctx,ship,f){
+    const cx=(ship.x+.5)*CS,cy=(ship.y+.5)*CS;
+    const dive=ship.mode==='dive'||ship.mode==='diving'||ship.mode==='ascending';
+    const wait=ship.mode==='waiting';
+    const emrg=ship.energy<CRIT_E&&ship.mode==='surface';
+    const glow=dive?'#a78bfa':emrg?'#f87171':wait?'#4ade80':'#38bdf8';
+
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(ship.facing);
+    ctx.shadowColor=glow;ctx.shadowBlur=14+Math.sin(f*.08)*4;
+
+    // Hull
+    ctx.fillStyle=dive?'#3b0764':emrg?'#7f1d1d':wait?'#14532d':'#0c4a6e';
+    ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(-5,-4.2);ctx.lineTo(-5,4.2);ctx.closePath();ctx.fill();
+    // Deck
+    ctx.fillStyle=dive?'#c4b5fd':emrg?'#fca5a5':wait?'#86efac':'#7dd3fc';
+    ctx.beginPath();ctx.moveTo(6,0);ctx.lineTo(-2,-2.5);ctx.lineTo(-2,2.5);ctx.closePath();ctx.fill();
+
+    // Smart net ring
+    if(ship.net){
+      ctx.strokeStyle='rgba(74,222,128,.75)';ctx.lineWidth=1.2;
+      ctx.setLineDash([2,2]);ctx.lineDashOffset=-(f*.25)%4;
+      ctx.beginPath();ctx.arc(0,0,8.5,0,Math.PI*2);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+
+    // Dive transition bubble
+    if(ship.mode==='diving'){
+      const pr=1-ship.transT/18;
+      ctx.save();ctx.globalAlpha=pr*.45;ctx.fillStyle='#8b5cf6';
+      ctx.beginPath();ctx.arc(cx,cy,10+pr*9,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  _pyro(ctx,ship){
+    const cx=(ship.x+.5)*CS,cy=(ship.y+.5)*CS;
+    const a=ship.pyF/35,r=(1-a)*55+8;
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+    g.addColorStop(0,`rgba(251,191,36,${a*.88})`);
+    g.addColorStop(.5,`rgba(234,88,12,${a*.45})`);
+    g.addColorStop(1,'rgba(234,88,12,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+  }
+
+  _hud(ctx,ship){
+    const bw=90,bh=7,bx=7,by=CH-20;
+    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(bx-3,by-15,bw+6,26);
+    ctx.fillStyle='#0f2035';ctx.fillRect(bx,by,bw,bh);
+    const ec=ship.energy>50?'#4ade80':ship.energy>25?'#fbbf24':'#f87171';
+    ctx.fillStyle=ec;ctx.fillRect(bx,by,bw*(ship.energy/100),bh);
+    ctx.fillStyle='#94a3b8';ctx.font='9px system-ui';
+    ctx.fillText(`⚡ ${ship.energy.toFixed(0)}%`,bx,by-2);
+    const si=ship.si();
+    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(CW-80,CH-18,78,14);
+    const sc={
+      's-dive':'#a78bfa','s-emrg':'#f87171','s-wait':'#4ade80',
+      's-tran':'#fbbf24','s-surf':'#38bdf8'
+    };
+    ctx.fillStyle=sc[si.cl]||'#38bdf8';ctx.font='8.5px system-ui';
+    ctx.textAlign='right';ctx.fillText(si.lb,CW-4,CH-7);ctx.textAlign='left';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SIMULATOR
+// ══════════════════════════════════════════════════════════════════
+class Sim{
+  constructor(){
+    this.cv=document.getElementById('sim');
+    this.cv.width=CW;this.cv.height=CH;
+    this.grid=new Grid();
+    this.ship=new Ship();
+    this.renderer=new Renderer(this.cv);
+    this.W={t:.4,e:.3,n:.3};
+    this.running=true;
+    this.tickRate=5;
+    this.accum=0;this.lastT=0;
+
+    this.grid.reveal(this.ship.x,this.ship.y,DET_R);
+    this._bindUI();
+    this._log('시뮬레이션 시작 — 탐지 범위 내 쓰레기 탐색 중','g');
+    requestAnimationFrame(t=>this._loop(t));
+  }
+
+  _loop(ts){
+    requestAnimationFrame(t=>this._loop(t));
+    const dt=Math.min(ts-this.lastT,200);
+    this.lastT=ts;
+
+    if(this.running){
+      if(Math.random()<dt/2000)this.grid.tickTyphoons();
+      this.accum+=dt*this.tickRate/1000;
+      let ticks=0;
+      while(this.accum>=1&&ticks<12){this.accum-=1;this._tick();ticks++}
+      if(this.accum>6)this.accum=0;
+    }
+
+    // Update path mode colour hint
+    const{t,e,n}=this.W,mx=Math.max(t,e,n);
+    this.ship.pathMode=mx===e&&e>.42?'eco':mx===n&&n>.42?'energy':mx===t&&t>.42?'time':'balanced';
+
+    this.renderer.draw(this.grid,this.ship,this.W);
+    this._dash();
+  }
+
+  _tick(){
+    this.ship.step(this.grid,this.W);
+    for(const ev of this.ship.events){
+      if(ev.t==='surf') this._log(`수면 쓰레기 수거 +${ev.a} (열분해 에너지 +${ev.eg.toFixed(1)})`,   'g');
+      else if(ev.t==='deep')       this._log(`심해 쓰레기 수거 +${ev.a} (열분해 에너지 +${ev.eg.toFixed(1)})`,'g');
+      else if(ev.t==='dive_start') this._log('잠수 개시 — 밸러스트 펌프 가동 (에너지 ↓↓)','w');
+      else if(ev.t==='dived')      this._log('잠수 완료 → 수중 수거 모드','');
+      else if(ev.t==='asc_start')  this._log('부상 개시 중...','');
+      else if(ev.t==='surfaced')   this._log('수면 복귀 → 경로 재계산','');
+      else if(ev.t==='depleted')   this._log('⚠ 에너지 고갈! 태양광 충전 대기','a');
+    }
+    this.ship.events=[];
+  }
+
+  _log(msg,type=''){
+    const el=document.getElementById('log-area');
+    const d=document.createElement('div');
+    const t=Math.floor(this.ship.ttime/10);
+    const cls={'g':'lg-g','w':'lg-w','a':'lg-a','':'lg'}[type]||'lg';
+    d.innerHTML=`<span class="lt">[T+${t}s]</span><span class="${cls}">${msg}</span>`;
+    el.prepend(d);
+    while(el.children.length>70)el.removeChild(el.lastChild);
+  }
+
+  _dash(){
+    const s=this.ship;
+    const si=s.si();
+    document.getElementById('sbadge').textContent=si.lb;
+    document.getElementById('sbadge').className=`status-badge ${si.cl}`;
+
+    const ti=document.getElementById('tgtxt');
+    if(s.mode==='waiting')ti.textContent='☀ 태양광 충전 중';
+    else if(s.energy<CRIT_E)ti.textContent='⚠ 비상: 열분해 대상 탐색';
+    else if(s.target){
+      const d=Math.hypot(s.target.x-s.x,s.target.y-s.y).toFixed(0);
+      ti.textContent=`→ ${s.target.surf?'수면':'심해'} 쓰레기 (거리 ${d}셀)`;
+    }else ti.textContent='경로 계산 중...';
+
+    const bat=s.energy;
+    document.getElementById('m-bat').textContent=`${bat.toFixed(0)}%`;
+    document.getElementById('m-bat').style.color=bat>50?'#4ade80':bat>25?'#fbbf24':'#f87171';
+    document.getElementById('m-tot').textContent=s.collected;
+    const eco=s.ecoDmg;
+    document.getElementById('m-eco').textContent=eco.toFixed(1);
+    document.getElementById('m-eco').style.color=eco<5?'#4ade80':eco<15?'#fbbf24':'#f87171';
+    const sec=Math.floor(s.ttime/10);
+    document.getElementById('m-time').textContent=sec<60?`${sec}s`:`${Math.floor(sec/60)}m${sec%60}s`;
+    document.getElementById('m-surf').textContent=s.cSurf;
+    document.getElementById('m-deep').textContent=s.cDeep;
+    const fill=document.getElementById('e-fill');
+    fill.style.width=`${bat}%`;
+    fill.style.background=bat>50?'#4ade80':bat>25?'#fbbf24':'#f87171';
+
+    // Algo hint
+    const{t,e,n}=this.W,mx=Math.max(t,e,n);
+    let hint='현재 전략: 균형형 다목적 최적화 (A*)';
+    if(mx===t&&t>.48)hint='현재 전략: 시간 우선 — 최단 거리 탐색';
+    else if(mx===e&&e>.48)hint='현재 전략: 생태 보호 — 해양생물 구역 우회';
+    else if(mx===n&&n>.48)hint='현재 전략: 에너지 절약 — 잠수 최소화 경로';
+    document.getElementById('algo-hint').textContent=hint;
+  }
+
+  _bindUI(){
+    const updW=()=>{
+      const vt=+document.getElementById('sw-t').value;
+      const ve=+document.getElementById('sw-e').value;
+      const vn=+document.getElementById('sw-n').value;
+      const s=vt+ve+vn||1;
+      this.W={t:vt/s,e:ve/s,n:vn/s};
+      document.getElementById('vt').textContent=(vt/s).toFixed(2);
+      document.getElementById('ve').textContent=(ve/s).toFixed(2);
+      document.getElementById('ven').textContent=(vn/s).toFixed(2);
+      this.ship.fRep=true;
+      this._log('가중치 변경 → 경로 즉시 재계산','w');
+    };
+    ['sw-t','sw-e','sw-n'].forEach(id=>document.getElementById(id).addEventListener('input',updW));
+
+    document.getElementById('sw-spd').addEventListener('input',e=>{
+      this.tickRate=+e.target.value;
+      document.getElementById('v-spd').textContent=`${this.tickRate}×`;
+    });
+
+    document.getElementById('btn-drone').addEventListener('click',()=>{
+      if(this.ship.launchDrone(this.grid))
+        this._log(`드론 출격! 탐지 반경 ${DRONE_R}셀 확장 (에너지 -${E_DRONE})`,'w');
+      else
+        this._log('드론 출격 실패 — 에너지 부족 또는 이미 활성 중','a');
+    });
+
+    document.getElementById('btn-crowd').addEventListener('click',()=>{
+      const f=this.ship.crowdData(this.grid);
+      this._log(`크라우드소싱 수신 완료${f?` — 쓰레기 ${f}곳 신규 탐지!`:' (신규 없음)'}`,'g');
+    });
+
+    document.getElementById('btn-typh').addEventListener('click',()=>{
+      const p=this.grid.spawnTyphoon();
+      this.grid.tickTyphoons();
+      this.ship.fRep=true;
+      this._log(`⚠ 태풍 발생! 위치 (${p.x},${p.y}) — 경로 회피 계산`,'a');
+    });
+
+    document.getElementById('btn-net').addEventListener('click',e=>{
+      this.ship.net=!this.ship.net;
+      e.target.textContent=`🕸 스마트 그물 ${this.ship.net?'ON':'OFF'}`;
+      e.target.className=this.ship.net?'btn-net-on':'';
+      this._log(
+        this.ship.net
+          ?'스마트 그물 + 음향 퇴치기 활성 (속도↓ 에너지↓ 생태피해≈0)'
+          :'스마트 그물 비활성화',
+        this.ship.net?'g':''
+      );
+      this.ship.fRep=true;
+    });
+
+    document.getElementById('btn-pause').addEventListener('click',e=>{
+      this.running=!this.running;
+      e.target.textContent=this.running?'⏸ 일시정지':'▶ 재개';
+    });
+
+    document.getElementById('btn-reset').addEventListener('click',()=>{
+      this.grid=new Grid();
+      this.ship.reset();
+      this.grid.reveal(this.ship.x,this.ship.y,DET_R);
+      document.getElementById('log-area').innerHTML='';
+      this._log('시뮬레이션 초기화됨','w');
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════════════
+window.addEventListener('load',()=>new Sim());
+</script>
+</body>
+</html>
